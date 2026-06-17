@@ -1,28 +1,66 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func home(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello from Snippetbox!"))
+	w.Header().Add("Server", "Go")
+	w.Header().Set("Content-Type", "application/json")
+	_, err := fmt.Fprint(w, `{"message": "Hello from Snippetbox!"}`)
+
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
 }
 
-func viewSnippet(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Viewing a single snippet."))
+func getSnippet(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id, err := strconv.Atoi(r.PathValue("id"))
+
+	if err != nil || id < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	_, err = fmt.Fprintf(w, `{"message": "Viewing snippet with id %v"}`, id)
+
+	if err != nil {
+		panic("could not write response")
+	}
+}
+
+func getSnippetForm(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_, err := fmt.Fprint(w, `{"message": "Display form for creating a snippet."}`)
+
+	if err != nil {
+		panic("could not write response")
+	}
 }
 
 func createSnippet(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Creating a snippet."))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_, err := fmt.Fprint(w, `{"message": "Creating a snippet."}`)
+
+	if err != nil {
+		panic("could not write response")
+	}
 }
 
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/{$}", home)
-	mux.HandleFunc("/view", viewSnippet)
-	mux.HandleFunc("/create", createSnippet)
+	mux.HandleFunc("GET /{$}", home)
+	mux.HandleFunc("GET /snippets/{id}", getSnippet)
+	mux.HandleFunc("GET /snippets/create", getSnippetForm)
+	mux.HandleFunc("POST /snippets", createSnippet)
 
 	log.Print("Starting server on :4000")
 
