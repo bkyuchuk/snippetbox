@@ -28,19 +28,9 @@ func main() {
 		logger: slog.New(slog.NewTextHandler(os.Stdout, nil)),
 	}
 
-	mux := http.NewServeMux()
-
-	fileServer := http.FileServer(http.Dir(cfg.staticDir))
-
-	mux.HandleFunc("GET /{$}", app.home)
-	mux.HandleFunc("GET /snippets/{id}", app.getSnippet)
-	mux.HandleFunc("GET /snippets/create", app.getSnippetForm)
-	mux.HandleFunc("POST /snippets", app.createSnippet)
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
-
 	app.logger.Info("Starting server on address", slog.String("addr", cfg.addr))
 
-	err := http.ListenAndServe(cfg.addr, mux)
+	err := http.ListenAndServe(cfg.addr, app.routes())
 
 	app.logger.Error(err.Error())
 
