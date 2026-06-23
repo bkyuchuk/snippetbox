@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
+
+	"snippetbox.bogdandev.de/internal/models"
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +35,6 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	id, err := strconv.Atoi(r.PathValue("id"))
 
 	if err != nil || id < 1 {
@@ -40,11 +42,18 @@ func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = fmt.Fprintf(w, `{"message": "Viewing snippet with id %v"}`, id)
+	snippet, err := app.snippets.Get(int64(id))
 
 	if err != nil {
-		panic("could not write response")
+		if errors.Is(err, models.ErrNoRecord) {
+			http.NotFound(w, r)
+		} else {
+			app.serverError(w, r, err)
+		}
+		return
 	}
+
+	fmt.Fprintf(w, "%+v", snippet)
 }
 
 func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {
@@ -57,12 +66,18 @@ func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	// Dummy data;
+	title := "O snail"
+	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
+	expires := 7
 
-	_, err := fmt.Fprint(w, `{"message": "Creating a snippet."}`)
+	id, err := app.snippets.Insert(title, content, expires)
 
 	if err != nil {
-		panic("could not write response")
+		app.serverError(w, r, err)
+		return
 	}
+
+	// Redirect to relevant snippet page
+	http.Redirect(w, r, fmt.Sprintf("/snippets/%d", id), http.StatusSeeOther)
 }

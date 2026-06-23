@@ -1,9 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+
+	_ "turso.tech/database/tursogo"
 )
 
 func (app *application) serverError(w http.ResponseWriter, r *http.Request, err error) {
@@ -24,4 +27,29 @@ func (app *application) serverError(w http.ResponseWriter, r *http.Request, err 
 
 func clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
+}
+
+func initDb(dbDriver, connStr string) *sql.DB {
+	DB, err := sql.Open(dbDriver, connStr)
+
+	if err != nil {
+		panic("unable to open database")
+	}
+
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS snippets(
+    	id INTEGER PRIMARY KEY AUTOINCREMENT,
+    	title TEXT NOT NULL,
+    	content TEXT NOT NULL,
+    	created DATETIME NOT NULL,
+    	expires DATETIME NOT NULL
+	)`)
+
+	if err != nil {
+		panic("could not create table")
+	}
+
+	DB.SetMaxOpenConns(20)
+	DB.SetMaxIdleConns(10)
+
+	return DB
 }
