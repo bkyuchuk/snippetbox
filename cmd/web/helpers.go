@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -52,4 +54,29 @@ func initDb(dbDriver, connStr string) *sql.DB {
 	DB.SetMaxIdleConns(10)
 
 	return DB
+}
+
+func (app *application) render(w http.ResponseWriter, r *http.Request, status int, page string, data templateData) {
+	ts, ok := app.cache[page]
+	if !ok {
+		err := fmt.Errorf("template %s does not exist", page)
+		app.serverError(w, r, err)
+		return
+	}
+
+	buf := new(bytes.Buffer)
+
+	err := ts.ExecuteTemplate(buf, "base", data)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(status)
+
+	_, err = buf.WriteTo(w)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
 }

@@ -71,5 +71,51 @@ func (sm *SnippetModel) Get(id int64) (*Snippet, error) {
 }
 
 func (sm *SnippetModel) Latest() ([]*Snippet, error) {
-	return nil, nil
+	rows, err := sm.DB.Query(`
+		SELECT id, title, content, created, expires
+		FROM snippets
+		WHERE expires > CURRENT_TIMESTAMP
+		ORDER BY created DESC
+		LIMIT 10
+		`,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(r *sql.Rows) {
+		err := r.Close()
+
+		if err != nil {
+			panic("could not close rows")
+		}
+	}(rows)
+
+	var snippets []*Snippet
+
+	for rows.Next() {
+		var s Snippet
+		err := rows.Scan(
+			&s.Id,
+			&s.Title,
+			&s.Content,
+			&s.Created,
+			&s.Expires,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		snippets = append(snippets, &s)
+	}
+
+	err = rows.Err()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return snippets, nil
 }

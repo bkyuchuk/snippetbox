@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 
@@ -13,25 +12,14 @@ import (
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Server", "Go")
 
-	files := []string{
-		"./ui/html/base.tmpl",
-		"./ui/html/partials/nav.tmpl",
-		"./ui/html/pages/home.tmpl",
-	}
-
-	ts, err := template.ParseFiles(files...)
+	snippets, err := app.snippets.Latest()
 
 	if err != nil {
 		app.serverError(w, r, err)
 		return
 	}
 
-	err = ts.ExecuteTemplate(w, "base", nil)
-
-	if err != nil {
-		app.serverError(w, r, err)
-		return
-	}
+	app.render(w, r, http.StatusOK, "home.tmpl", templateData{Snippets: snippets})
 }
 
 func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +41,7 @@ func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "%+v", snippet)
+	app.render(w, r, http.StatusOK, "view.tmpl", templateData{Snippet: snippet})
 }
 
 func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {
@@ -67,9 +55,9 @@ func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
 	// Dummy data;
-	title := "O snail"
-	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
-	expires := 7
+	title := "An old silent pond"
+	content := "An old silent pond...\\nA frog jumps into the pond,\\nsplash! Silence again.\\n\\n– Matsuo Bashō"
+	expires := 1
 
 	id, err := app.snippets.Insert(title, content, expires)
 

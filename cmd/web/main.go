@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ type config struct {
 type application struct {
 	logger   *slog.Logger
 	snippets *models.SnippetModel
+	cache    map[string]*template.Template
 }
 
 var cfg config
@@ -31,14 +33,24 @@ func main() {
 
 	flag.Parse()
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	templateCache, err := newTemplateCache()
+
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
 	app := &application{
-		logger:   slog.New(slog.NewTextHandler(os.Stdout, nil)),
+		logger:   logger,
 		snippets: &models.SnippetModel{DB: initDb(cfg.dbDriver, cfg.dbConnStr)},
+		cache:    templateCache,
 	}
 
 	app.logger.Info("Starting server on address", slog.String("addr", cfg.addr))
 
-	err := http.ListenAndServe(cfg.addr, app.routes())
+	err = http.ListenAndServe(cfg.addr, app.routes())
 
 	app.logger.Error(err.Error())
 
