@@ -56,7 +56,7 @@ func initDb(dbDriver, connStr string) *sql.DB {
 	return DB
 }
 
-func (app *application) render(w http.ResponseWriter, r *http.Request, status int, page string, data templateData) {
+func (app *application) render(w http.ResponseWriter, r *http.Request, status int, page string, data *templateData) {
 	ts, ok := app.cache[page]
 	if !ok {
 		err := fmt.Errorf("template %s does not exist", page)

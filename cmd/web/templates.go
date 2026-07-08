@@ -3,13 +3,29 @@ package main
 import (
 	"html/template"
 	"path/filepath"
+	"time"
 
 	"snippetbox.bogdandev.de/internal/models"
 )
 
 type templateData struct {
-	Snippet  *models.Snippet
-	Snippets []*models.Snippet
+	Snippet     *models.Snippet
+	Snippets    []*models.Snippet
+	CurrentYear int
+}
+
+func newTemplateData() *templateData {
+	return &templateData{
+		CurrentYear: time.Now().Year(),
+	}
+}
+
+func toHumanDate(t time.Time) string {
+	return t.Format("02 Jan 2006 at 15:04")
+}
+
+var functions = template.FuncMap{
+	"humanDate": toHumanDate,
 }
 
 func newTemplateCache() (map[string]*template.Template, error) {
@@ -27,7 +43,7 @@ func newTemplateCache() (map[string]*template.Template, error) {
 			"./ui/html/base.tmpl",
 		}
 
-		ts, err := template.ParseFiles(files...)
+		ts, err := template.New(name).Funcs(functions).ParseFiles(files...)
 		if err != nil {
 			return nil, err
 		}

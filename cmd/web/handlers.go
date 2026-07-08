@@ -10,8 +10,6 @@ import (
 )
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Server", "Go")
-
 	snippets, err := app.snippets.Latest()
 
 	if err != nil {
@@ -19,7 +17,10 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.render(w, r, http.StatusOK, "home.tmpl", templateData{Snippets: snippets})
+	templateData := newTemplateData()
+	templateData.Snippets = snippets
+
+	app.render(w, r, http.StatusOK, "home.tmpl", templateData)
 }
 
 func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +42,10 @@ func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.render(w, r, http.StatusOK, "view.tmpl", templateData{Snippet: snippet})
+	templateData := newTemplateData()
+	templateData.Snippet = snippet
+
+	app.render(w, r, http.StatusOK, "view.tmpl", templateData)
 }
 
 func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {

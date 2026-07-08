@@ -2,7 +2,7 @@ package main
 
 import "net/http"
 
-func (app *application) routes() *http.ServeMux {
+func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
 
 	fileServer := http.FileServer(http.Dir(cfg.staticDir))
@@ -13,5 +13,5 @@ func (app *application) routes() *http.ServeMux {
 	mux.HandleFunc("POST /snippets", app.createSnippet)
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
-	return mux
+	return app.recoverPanic(app.logRequest(commonHeaders(mux)))
 }
