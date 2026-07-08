@@ -49,27 +49,30 @@ func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_, err := fmt.Fprint(w, `{"message": "Display form for creating a snippet."}`)
-
-	if err != nil {
-		panic("could not write response")
-	}
+	app.render(w, r, http.StatusOK, "create.tmpl", newTemplateData())
 }
 
 func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
-	// Dummy data;
-	title := "An old silent pond"
-	content := "An old silent pond...\\nA frog jumps into the pond,\\nsplash! Silence again.\\n\\n– Matsuo Bashō"
-	expires := 1
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	title := r.PostForm.Get("title")
+	content := r.PostForm.Get("content")
+
+	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
 
 	id, err := app.snippets.Insert(title, content, expires)
-
 	if err != nil {
 		app.serverError(w, r, err)
 		return
 	}
 
-	// Redirect to relevant snippet page
 	http.Redirect(w, r, fmt.Sprintf("/snippets/%d", id), http.StatusSeeOther)
 }
