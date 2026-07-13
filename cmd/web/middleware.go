@@ -4,7 +4,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 )
+
+type chain []func(handler http.Handler) http.Handler
+
+func (c *chain) thenFunc(handler http.Handler) http.Handler {
+	return c.then(handler)
+}
+
+func (c *chain) then(h http.Handler) http.Handler {
+	for _, mw := range slices.Backward(*c) {
+		h = mw(h)
+	}
+
+	return h
+}
 
 func commonHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

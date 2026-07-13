@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 
+	"github.com/go-playground/form/v4"
 	_ "turso.tech/database/tursogo"
 )
 
@@ -38,7 +40,7 @@ func initDb(dbDriver, connStr string) *sql.DB {
 		panic("unable to open database")
 	}
 
-	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS snippets(
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS snippets (
     	id INTEGER PRIMARY KEY AUTOINCREMENT,
     	title TEXT NOT NULL,
     	content TEXT NOT NULL,
@@ -46,8 +48,17 @@ func initDb(dbDriver, connStr string) *sql.DB {
     	expires DATETIME NOT NULL
 	)`)
 
+	_, err = DB.Exec(
+		`CREATE TABLE IF NOT EXISTS sessions (
+    	token TEXT PRIMARY KEY,
+    	data BLOB NOT NULL,
+    	expiry REAL NOT NULL
+	);
+	CREATE INDEX sessions_expiry_idx ON sessions(expiry);
+	`)
+
 	if err != nil {
-		panic("could not create table")
+		panic("could not create tables")
 	}
 
 	DB.SetMaxOpenConns(20)
@@ -79,4 +90,22 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, status in
 		app.serverError(w, r, err)
 		return
 	}
+}
+
+func (app *application) decodeForm(r *http.Request, dst any) error {
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+
+	err = app.formDecoder.Decode(dst, r.PostForm)
+	if err != nil {
+		if _, ok := errors.AsType[*form.InvalidDecoderError](err); !ok {
+			panic(err)
+		}
+
+		return err
+	}
+
+	return nil
 }

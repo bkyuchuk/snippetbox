@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
-	"unicode/utf8"
 
 	"snippetbox.bogdandev.de/internal/models"
+	"snippetbox.bogdandev.de/internal/validator"
 )
 
 type snippetForm struct {
-	Title       string
-	Content     string
-	Expires     int
-	FieldErrors map[string]string
+	Title   string `form:"title"`
+	Content string `form:"content"`
+	Expires int    `form:"expires"`
+	validator.Validator
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -58,44 +57,29 @@ func (app *application) getSnippet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) getSnippetForm(w http.ResponseWriter, r *http.Request) {
-	app.render(w, r, http.StatusOK, "create.tmpl", newTemplateData())
+	data := newTemplateData()
+	data.Form = snippetForm{
+		Expires: 1,
+	}
+
+	app.render(w, r, http.StatusOK, "create.tmpl", data)
 }
 
 func (app *application) createSnippet(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	form := &snippetForm{}
+
+	err := app.decodeForm(r, form)
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	expires, err := strconv.Atoi(r.PostForm.Get("expires"))
-	if err != nil {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
+	form.CheckField(form.IsNotBlank(form.Title), "title", "This field cannot be blank")
+	form.CheckField(form.IsNotBlank(form.Content), "content", "This field cannot be blank")
+	form.CheckField(form.IsUnderMaxChars(form.Title, 100), "title", "This field must have less than 100 characters")
+	form.CheckField(validator.HasPermittedValue(form.Expires, 1, 7, 365), "expires", "This field must be either 1, 7 or 365")
 
-	form := &snippetForm{
-		Title:       r.PostForm.Get("title"),
-		Content:     r.PostForm.Get("content"),
-		Expires:     expires,
-		FieldErrors: map[string]string{},
-	}
-
-	if strings.TrimSpace(form.Title) == "" {
-		form.FieldErrors["title"] = "This field cannot be blank"
-	} else if utf8.RuneCountInString(form.Title) > 100 {
-		form.FieldErrors["title"] = "This field cannot be more than 100 characters long"
-	}
-
-	if strings.TrimSpace(form.Content) == "" {
-		form.FieldErrors["content"] = "This field cannot be blank"
-	}
-
-	if form.Expires != 1 && form.Expires != 7 && form.Expires != 365 {
-		form.FieldErrors["expires"] = "This field must have the value 1, 7 or 365"
-	}
-
-	if len(form.FieldErrors) > 0 {
+	if !form.IsValid() {
 		data := newTemplateData()
 		data.Form = form
 		app.render(w, r, http.StatusUnprocessableEntity, "create.tmpl", data)

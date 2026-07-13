@@ -6,7 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/alexedwards/scs/sqlite3store"
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
 	"snippetbox.bogdandev.de/internal/models"
 )
 
@@ -18,9 +22,11 @@ type config struct {
 }
 
 type application struct {
-	logger   *slog.Logger
-	snippets *models.SnippetModel
-	cache    map[string]*template.Template
+	logger         *slog.Logger
+	snippets       *models.SnippetModel
+	cache          map[string]*template.Template
+	formDecoder    *form.Decoder
+	sessionManager *scs.SessionManager
 }
 
 var cfg config
@@ -34,8 +40,11 @@ func main() {
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
 	templateCache, err := newTemplateCache()
+	DB := initDb(cfg.dbDriver, cfg.dbConnStr)
+	sessionManager := scs.New()
+	sessionManager.Store = sqlite3store.New(DB)
+	sessionManager.Lifetime = 12 * time.Hour
 
 	if err != nil {
 		logger.Error(err.Error())
@@ -43,9 +52,11 @@ func main() {
 	}
 
 	app := &application{
-		logger:   logger,
-		snippets: &models.SnippetModel{DB: initDb(cfg.dbDriver, cfg.dbConnStr)},
-		cache:    templateCache,
+		logger:         logger,
+		snippets:       &models.SnippetModel{DB: DB},
+		cache:          templateCache,
+		formDecoder:    form.NewDecoder(),
+		sessionManager: sessionManager,
 	}
 
 	app.logger.Info("Starting server on address", slog.String("addr", cfg.addr))
