@@ -54,8 +54,17 @@ func initDb(dbDriver, connStr string) *sql.DB {
     	data BLOB NOT NULL,
     	expiry REAL NOT NULL
 	);
-	CREATE INDEX sessions_expiry_idx ON sessions(expiry);
+	CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expiry);
 	`)
+
+	_, err = DB.Exec(
+		`CREATE TABLE IF NOT EXISTS users (
+    	id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        hashed_password TEXT NOT NULL,
+        created DATETIME NOT NULL
+	)`)
 
 	if err != nil {
 		panic("could not create tables")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"html/template"
 	"log/slog"
@@ -24,6 +25,7 @@ type config struct {
 type application struct {
 	logger         *slog.Logger
 	snippets       *models.SnippetModel
+	users          *models.UserModel
 	cache          map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
@@ -54,16 +56,30 @@ func main() {
 	app := &application{
 		logger:         logger,
 		snippets:       &models.SnippetModel{DB: DB},
+		users:          &models.UserModel{DB: DB},
 		cache:          templateCache,
 		formDecoder:    form.NewDecoder(),
 		sessionManager: sessionManager,
 	}
 
-	app.logger.Info("Starting server on address", slog.String("addr", cfg.addr))
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
 
-	err = http.ListenAndServe(cfg.addr, app.routes())
+	srv := &http.Server{
+		Addr:           cfg.addr,
+		Handler:        app.routes(),
+		ErrorLog:       slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		TLSConfig:      tlsConfig,
+		IdleTimeout:    1 * time.Minute,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 524288,
+	}
 
+	app.logger.Info("Starting server on address", slog.String("addr", srv.Addr))
+
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	app.logger.Error(err.Error())
-
 	os.Exit(1)
 }
