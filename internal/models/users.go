@@ -2,7 +2,11 @@ package models
 
 import (
 	"database/sql"
+	"errors"
+	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -19,11 +23,19 @@ type UserModel struct {
 
 func (m *UserModel) Insert(name, email, password string) error {
 	now := time.Now().UTC()
-
-	_, err := m.DB.Exec(`INSERT INTO users (name, email, hashed_password, created)
-		VALUES (?, ?, ?, ?)
-	`, name, email, password, now)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
+		return err
+	}
+
+	_, err = m.DB.Exec(`INSERT INTO users (name, email, hashed_password, created)
+		VALUES (?, ?, ?, ?)
+	`, name, email, hashedPassword, now)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint") {
+			return ErrDuplicateEmail
+		}
+
 		return err
 	}
 
@@ -31,7 +43,26 @@ func (m *UserModel) Insert(name, email, password string) error {
 }
 
 func (m *UserModel) Authenticate(email, password string) (int64, error) {
-	return 0, nil
+	var id int64
+	var hashedPassword []byte
+
+	err := m.DB.QueryRow("SELECT id, hashed_password FROM users WHERE email = ?", email).Scan(&id, &hashedPassword)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrInvalidCredentials
+		}
+		return 0, err
+	}
+
+	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password))
+	if err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return 0, ErrInvalidCredentials
+		}
+		return 0, err
+	}
+
+	return id, nil
 }
 
 func (m *UserModel) Exists(id int64) (bool, error) {
