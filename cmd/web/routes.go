@@ -8,7 +8,7 @@ func (app *application) routes() http.Handler {
 	fileServer := http.FileServer(http.Dir(cfg.staticDir))
 	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
 
-	dynamic := &chain{app.sessionManager.LoadAndSave, app.preventCSRF}
+	dynamic := &chain{app.sessionManager.LoadAndSave, app.preventCSRF, app.authenticate}
 
 	// Snippets
 	mux.Handle("GET /{$}", dynamic.thenFunc(http.HandlerFunc(app.home)))
