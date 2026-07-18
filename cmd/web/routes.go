@@ -1,12 +1,15 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+
+	"snippetbox.bogdandev.de/ui"
+)
 
 func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
 
-	fileServer := http.FileServer(http.Dir(cfg.staticDir))
-	mux.Handle("GET /static/", http.StripPrefix("/static", fileServer))
+	mux.Handle("GET /static/", http.FileServerFS(ui.Files))
 
 	dynamic := &chain{app.sessionManager.LoadAndSave, app.preventCSRF, app.authenticate}
 
