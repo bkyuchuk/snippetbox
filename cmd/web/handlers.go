@@ -221,3 +221,7 @@ func (app *application) logout(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("OK"))
+}

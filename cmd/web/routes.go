@@ -11,6 +11,8 @@ func (app *application) routes() http.Handler {
 
 	mux.Handle("GET /static/", http.FileServerFS(ui.Files))
 
+	mux.HandleFunc("GET /healthCheck", healthCheck)
+
 	dynamic := &chain{app.sessionManager.LoadAndSave, app.preventCSRF, app.authenticate}
 
 	// Snippets
