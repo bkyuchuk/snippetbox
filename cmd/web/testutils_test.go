@@ -103,13 +103,13 @@ func (ts *testServer) get(t *testing.T, urlPath string) *testResponse {
 }
 
 func (ts *testServer) postForm(t *testing.T, urlPath string, form url.Values) *testResponse {
-	req, err := http.NewRequest("POST", urlPath, strings.NewReader(form.Encode()))
+	req, err := http.NewRequest("POST", ts.URL+urlPath, strings.NewReader(form.Encode()))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Set-Fetch-Site", "same-origin")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
 
 	res, err := ts.Client().Do(req)
 	if err != nil {
