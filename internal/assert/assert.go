@@ -13,6 +13,14 @@ func Equal[T any](t *testing.T, got, want T) {
 	}
 }
 
+func NotEqual[T any](t *testing.T, got, want T) {
+	t.Helper()
+
+	if isEqual(got, want) {
+		t.Errorf("got %v; want: %v", got, want)
+	}
+}
+
 func isEqual[T any](got, want T) bool {
 	if isNil(got) != isNil(want) {
 		return false
@@ -44,10 +52,26 @@ func Nil(t *testing.T, got any) {
 	}
 }
 
+func NotNil(t *testing.T, got any) {
+	t.Helper()
+
+	if isNil(got) {
+		t.Errorf("got nil; want: %q", got)
+	}
+}
+
 func True(t *testing.T, got bool) {
 	t.Helper()
 
 	if !got {
 		t.Errorf("got %t; want: true", got)
+	}
+}
+
+func False(t *testing.T, got bool) {
+	t.Helper()
+
+	if got {
+		t.Errorf("got %t; want false", got)
 	}
 }
